@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Commerce</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+        .navbar { background: #1a1a2e; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 1.4rem; }
+        .navbar a { color: #e94560; text-decoration: none; margin-left: 1rem; }
+        .navbar a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .btn { background: #e94560; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+        .btn:hover { background: #c73652; }
+        .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+        .btn-secondary { background: #4a4a6a; }
+        .btn-secondary:hover { background: #3a3a5a; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1rem; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+        .alert { padding: 0.8rem; border-radius: 4px; margin-bottom: 1rem; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #1a1a2e; color: white; }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-confirmed { background: #d1ecf1; color: #0c5460; }
+        .badge-processing { background: #cce5ff; color: #004085; }
+        .badge-outfordelivery { background: #d4edda; color: #155724; }
+        .badge-delivered { background: #cce5ff; color: #004085; }
+        .badge-cancelled { background: #f8d7da; color: #721c24; }
+        .status-PENDING { background: #fff3cd; color: #856404; }
+        .status-CONFIRMED { background: #d1ecf1; color: #0c5460; }
+        .status-PROCESSING { background: #cce5ff; color: #004085; }
+        .status-OUT_FOR_DELIVERY { background: #d4edda; color: #155724; }
+        .status-DELIVERED { background: #cce5ff; color: #004085; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .hidden { display: none; }
+        .price { font-weight: bold; color: #e94560; }
+        .text-center { text-align: center; }
+        .mt-2 { margin-top: 1rem; }
+        .mb-2 { margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1><a href="/" style="color:white;text-decoration:none;">Hybrid Commerce</a></h1>
+        <div>
+            <a href="/products">Products</a>
+            <a href="/cart">Cart</a>
+            <a href="/orders">Orders</a>
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+            <a href="/admin">Admin</a>
+        </div>
+    </div>
+    <div class="container" id="app">
+        <div id="content"></div>
+    </div>
+
+    <script>
+    const API = window.location.origin + '/api';
+
+    async function apiCall(path, options = {}) {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/api' + path, { ...options, headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Request failed');
+        return data;
+    }
+
+    async function init() {
+        const content = document.getElementById('content');
+        const path = window.location.pathname;
+
+        if (path === '/' || path === '/index.html') {
+            content.innerHTML = `
+                <h1>Welcome to Hybrid Commerce</h1>
+                <p style="margin:1rem 0;">A cloud commerce platform demo.</p>
+                <a href="/products" class="btn">Browse Products</a>
+                <a href="/admin" class="btn btn-secondary">Admin Panel</a>
+                <div style="margin-top:2rem;padding:1rem;background:white;border-radius:8px;">
+                    <h3>Quick Start</h3>
+                    <ol>
+                        <li><a href="/register">Create an account</a></li>
+                        <li><a href="/login">Login</a></li>
+                        <li><a href="/products">Browse products</a></li>
+                        <li>Add items to cart and place an order</li>
+                        <li>Use Admin panel to update order status</li>
+                    </ol>
+                </div>`;
+
+        } else if (path === '/products') {
+            try {
+                const products = await apiCall('/products');
+                let html = `<h1>Products</h1>
+                    <div class="card" style="margin-bottom:1rem;">
+                        <input type="text" id="searchInput" placeholder="Search products..." style="width:300px;padding:0.5rem;border:1px solid #ddd;border-radius:4px;" oninput="loadProducts()">
+                        <button class="btn btn-sm" onclick="loadProducts()">Search</button>
+                        <a href="/products" class="btn btn-sm btn-secondary">Clear</a>
+                    </div>`;
+                if (products.length === 0) {
+                    html += '<p class="text-center" style="padding:2rem;color:#999;">No products found.</p>';
+                } else {
+                    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">';
+                    for (const p of products) {
+                        const inStock = p.stock_quantity > 0;
+                        html += `
+                            <div class="card">
+                                <h3 style="margin-bottom:0.3rem;">${p.name}</h3>
+                                ${p.description ? `<p style="color:#666;font-size:0.9rem;margin-bottom:0.5rem;">${p.description}</p>` : ''}
+                                <p class="price">$${parseFloat(p.price).toFixed(2)}</p>
+                                <p style="font-size:0.85rem;color:#888;">Stock: ${p.stock_quantity} ${inStock ? '✅' : '❌ Out of stock'}</p>
+                                <button class="btn btn-sm" onclick="addToCart('${p.id}')" ${!inStock ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+                                    Add to Cart
+                                </button>
+                            </div>`;
+                    }
+                    html += '</div>';
+                }
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+
+        } else if (path === '/login') {
+            content.innerHTML = `
+                <h1>Login</h1>
+                <div class="card" style="max-width:400px;margin:0 auto;">
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="password" required>
+                        </div>
+                        <button type="submit" class="btn" style="width:100%;">Login</button>
+                    </form>
+                    <p class="text-center mt-2">Don't have an account? <a href="/register">Register</a></p>
+                </div>`;
+
+            document.getElementById('loginForm').onsubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    const token = await apiCall('/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('email').value,
+                            password: document.getElementById('password').value,
+                        }),
+                    });
+                    localStorage.setItem('token', token.access_token);
+                    document.getElementById('content').innerHTML = '<div class="alert alert-success">Login successful! Redirecting...</div>';
+                    setTimeout(() => window.location.href = '/products', 1000);
+                } catch (e) {
+                    document.getElementById('content').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+                }
+            };
+
+        } else if (path === '/register') {
+            content.innerHTML = `
+                <h1>Register</h1>
+                <div class="card" style="max-width:400px;margin:0 auto;">
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="full_name">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password (min 6 characters)</label>
+                            <input type="password" id="password" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn" style="width:100%;">Register</button>
+                    </form>
+                    <p class="text-center mt-2">Already have an account? <a href="/login">Login</a></p>
+                </div>`;
+
+            document.getElementById('registerForm').onsubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await apiCall('/auth/register', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('email').value,
+                            password: document.getElementById('password').value,
+                            full_name: document.getElementById('full_name').value || undefined,
+                        }),
+                    });
+                    document.getElementById('content').innerHTML = '<div class="alert alert-success">Registration successful! <a href="/login">Login here</a></div>';
+                } catch (e) {
+                    document.getElementById('content').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+                }
+            };
+
+        } else if (path === '/cart') {
+            content.innerHTML = '<div id="cartContent">Loading...</div>';
+            try {
+                const cart = await apiCall('/cart');
+                const items = cart.items || [];
+                if (items.length === 0) {
+                    document.getElementById('cartContent').innerHTML = '<p class="text-center" style="padding:2rem;color:#999;">Your cart is empty.</p>';
+                    return;
+                }
+                let html = '<h1>Shopping Cart</h1><table><thead><tr><th>Product</th><th>Quantity</th><th>Price</th><th>Subtotal</th><th></th></tr></thead><tbody>';
+                let total = 0;
+                for (const item of items) {
+                    // Fetch product details inline for display
+                    total += parseFloat(item.unit_price || 0) * item.quantity;
+                }
+                html += `</tbody></table>
+                    <div class="card mt-2" style="display:flex;justify-content:space-between;align-items:center;">
+                        <h3>Total: <span class="price">$${total.toFixed(2)}</span></h3>
+                        <button class="btn" onclick="placeOrder()">Place Order</button>
+                    </div>`;
+                document.getElementById('cartContent').innerHTML = html;
+            } catch (e) {
+                document.getElementById('cartContent').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+
+        } else if (path === '/orders') {
+            content.innerHTML = '<div id="ordersContent">Loading...</div>';
+            try {
+                const orders = await apiCall('/orders');
+                if (orders.length === 0) {
+                    document.getElementById('ordersContent').innerHTML = '<p class="text-center" style="padding:2rem;color:#999;">No orders yet.</p>';
+                    return;
+                }
+                let html = '<h1>My Orders</h1><table><thead><tr><th>Order ID</th><th>Date</th><th>Total</th><th>Status</th><th>Items</th></tr></thead><tbody>';
+                for (const o of orders) {
+                    const itemsStr = o.items.map(i => `Qty: ${i.quantity}`).join(', ');
+                    html += `<tr>
+                        <td>${o.id.slice(0,8)}...</td>
+                        <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                        <td class="price">$${parseFloat(o.total_amount).toFixed(2)}</td>
+                        <td><span class="badge status-${o.status.replace(/ /g,'')}">${o.status}</span></td>
+                        <td>${itemsStr}</td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('ordersContent').innerHTML = html;
+            } catch (e) {
+                document.getElementById('ordersContent').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+
+        } else if (path === '/admin') {
+            content.innerHTML = '<div id="adminContent">Loading...</div>';
+            try {
+                const me = await apiCall('/auth/me');
+                if (!me.is_admin) {
+                    document.getElementById('adminContent').innerHTML = '<div class="alert alert-error">Admin access required.</div>';
+                    return;
+                }
+                const [orders, dashboard] = await Promise.all([
+                    apiCall('/admin/orders'),
+                    apiCall('/admin/dashboard'),
+                ]);
+                let html = `<h1>Admin Dashboard</h1>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1rem 0;">
+                        <div class="card text-center"><h3>${dashboard.total_products}</h3><p>Products</p></div>
+                        <div class="card text-center"><h3>${dashboard.total_orders}</h3><p>Total Orders</p></div>
+                        <div class="card text-center"><h3>${dashboard.pending_orders}</h3><p>Pending</p></div>
+                        <div class="card text-center"><h3>${dashboard.total_revenue}</h3><p>Revenue</p></div>
+                    </div>
+                    <h2>All Orders</h2>
+                    <table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+                for (const o of orders) {
+                    html += `<tr>
+                        <td>${o.id.slice(0,8)}...</td>
+                        <td>${o.shipping_name || 'N/A'}</td>
+                        <td class="price">$${parseFloat(o.total_amount).toFixed(2)}</td>
+                        <td><span class="badge status-${o.status.replace(/ /g,'')}">${o.status}</span></td>
+                        <td>
+                            <select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:0.3rem;border-radius:4px;">
+                                <option value="" ${o.status === 'PENDING' ? 'selected' : ''}>Select...</option>
+                                <option value="CONFIRMED" ${o.status === 'CONFIRMED' ? 'selected' : ''}>Confirm</option>
+                                <option value="PROCESSING" ${o.status === 'PROCESSING' ? 'selected' : ''}>Processing</option>
+                                <option value="OUT_FOR_DELIVERY" ${o.status === 'OUT_FOR_DELIVERY' ? 'selected' : ''}>Out for Delivery</option>
+                                <option value="DELIVERED" ${o.status === 'DELIVERED' ? 'selected' : ''}>Delivered</option>
+                                <option value="CANCELLED" ${o.status === 'CANCELLED' ? 'selected' : ''}>Cancel</option>
+                            </select>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('adminContent').innerHTML = html;
+            } catch (e) {
+                document.getElementById('adminContent').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+        }
+    }
+
+    async function loadProducts() {
+        const q = document.getElementById('searchInput')?.value || '';
+        const products = await apiCall(`/products?search=${encodeURIComponent(q)}`);
+        const grid = document.querySelector('#app > div > div:last-child') || document.getElementById('content');
+        if (products.length === 0) {
+            grid.innerHTML = '<p class="text-center" style="padding:2rem;color:#999;">No products found.</p>';
+            return;
+        }
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">';
+        for (const p of products) {
+            const inStock = p.stock_quantity > 0;
+            html += `
+                <div class="card">
+                    <h3>${p.name}</h3>
+                    ${p.description ? `<p style="color:#666;font-size:0.9rem;">${p.description}</p>` : ''}
+                    <p class="price">$${parseFloat(p.price).toFixed(2)}</p>
+                    <p>Stock: ${p.stock_quantity} ${inStock ? '✅' : '❌'}</p>
+                    <button class="btn btn-sm" onclick="addToCart('${p.id}')" ${!inStock ? 'disabled style="opacity:0.5;"' : ''}>Add to Cart</button>
+                </div>`;
+        }
+        html += '</div>';
+        const container = document.getElementById('content');
+        container.innerHTML = `<h1>Products</h1>
+            <div class="card" style="margin-bottom:1rem;">
+                <input type="text" id="searchInput" placeholder="Search..." style="width:300px;padding:0.5rem;border:1px solid #ddd;border-radius:4px;" value="${q}" oninput="loadProducts()">
+                <button class="btn btn-sm" onclick="loadProducts()">Search</button>
+            </div>` + html;
+    }
+
+    async function addToCart(productId) {
+        try {
+            await apiCall('/cart/items', {
+                method: 'POST',
+                body: JSON.stringify({ product_id: productId, quantity: 1 }),
+            });
+            alert('Added to cart!');
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+
+    async function placeOrder() {
+        const name = prompt('Shipping name:');
+        const address = prompt('Shipping address:');
+        const city = prompt('City:');
+        if (!name || !address || !city) return;
+        try {
+            await apiCall('/orders', {
+                method: 'POST',
+                body: JSON.stringify({ shipping_name: name, shipping_address: address, shipping_city: city }),
+            });
+            alert('Order placed!');
+            window.location.href = '/orders';
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+        if (!newStatus) return;
+        try {
+            await apiCall(`/orders/${orderId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus }),
+            });
+            window.location.reload();
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+
+    init();
+    </script>
+</body>
+</html>

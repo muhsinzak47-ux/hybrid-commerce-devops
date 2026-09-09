@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+*.egg
+
+# SQLite database
+*.db
+*.sqlite
+*.sqlite3
+hybrid.db
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+test_app.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Build outputs
+dist/
+build/
+*.egg
+
+# Cloud provider
+.aws/
+.gcloud/
+.azure/
+
+# Backups (contain database dumps with real data)
+backup/
+backups/
+
+# OS-specific
+*.pid
