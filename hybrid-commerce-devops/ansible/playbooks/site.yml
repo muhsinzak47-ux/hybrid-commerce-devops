@@ -1,0 +1,62 @@
+---
+- name: Configure Hybrid Commerce Application Server
+  hosts: app_servers
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+
+  roles:
+    - common
+    - docker
+    - app_deploy
+
+  tasks:
+    - name: Ensure application directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        mode: '0755'
+      loop:
+        - "/opt/{{ app_name }}"
+        - "/opt/{{ app_name }}/app"
+
+    - name: Copy application files
+      copy:
+        src: "../app/backend/"
+        dest: "/opt/{{ app_name }}/app/"
+        owner: "{{ app_user }}"
+        mode: '0644'
+      ignore_errors: true
+
+    - name: Copy .env file
+      copy:
+        src: "../app/backend/.env"
+        dest: "/opt/{{ app_name }}/.env"
+        owner: "{{ app_user }}"
+        mode: '0600'
+      ignore_errors: true
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "/opt/{{ app_name }}/app/requirements.txt"
+        virtualenv: "/opt/{{ app_name }}/venv"
+        virtualenv_command: python3 -m venv
+      ignore_errors: true
+
+    - name: Copy systemd service file
+      copy:
+        src: "files/hybrid-commerce.service"
+        dest: "/etc/systemd/system/hybrid-commerce.service"
+        mode: '0644'
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    - name: Enable and start application service
+      systemd:
+        name: hybrid-commerce
+        enabled: true
+        state: started
+        restarted: true

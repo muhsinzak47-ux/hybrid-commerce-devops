@@ -1,0 +1,18 @@
+[Unit]
+Description=Hybrid Commerce Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=appuser
+WorkingDirectory=/opt/hybrid-commerce
+Environment="PATH=/opt/hybrid-commerce/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/hybrid-commerce/.env
+ExecStart=/opt/hybrid-commerce/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+---
+- name: Ensure application is running via systemd
+  systemd:
+    name: hybrid-commerce
+    enabled: true
+    state: started
+    daemon_reload: true
