@@ -37,32 +37,32 @@ async def index(request: Request):
 
 @app.get("/products", response_class=HTMLResponse)
 async def products_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/cart", response_class=HTMLResponse)
 async def cart_page(request: Request):
-    return templates.TemplateResponse("cart.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/orders", response_class=HTMLResponse)
 async def orders_page(request: Request):
-    return templates.TemplateResponse("orders.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request})
+    return RedirectResponse(url="/")
 
 
 @app.get("/health")
