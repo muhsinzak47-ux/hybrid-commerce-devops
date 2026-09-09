@@ -1,7 +1,66 @@
----
-- name: Ensure application is running via systemd
+# Application deployment
+- name: Ensure application directory exists
+  file:
+    path: "/opt/{{ app_name }}"
+    state: directory
+    owner: "{{ app_user }}"
+    mode: '0755'
+
+- name: Copy application source
+  copy:
+    src: "../../app/backend/"
+    dest: "/opt/{{ app_name }}/"
+    owner: "{{ app_user }}"
+    mode: '0644'
+  ignore_errors: yes
+
+- name: Create .env file
+  copy:
+    content: |
+      APP_NAME={{ app_name }}
+      ENVIRONMENT=production
+      DEBUG=false
+      SECRET_KEY={{ secret_key | default('change-me') }}
+      DATABASE_URL=postgresql+psycopg2://{{ postgres_user }}:{{ postgres_password }}@localhost:{{ db_port }}/{{ postgres_db }}
+      REDIS_URL=redis://localhost:6379
+    dest: "/opt/{{ app_name }}/.env"
+    owner: "{{ app_user }}"
+    mode: '0600'
+  no_log: true
+
+- name: Install Python dependencies
+  pip:
+    requirements: "/opt/{{ app_name }}/requirements.txt"
+    virtualenv: "/opt/{{ app_name }}/venv"
+  become_user: "{{ app_user }}"
+
+- name: Create systemd service
+  copy:
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    content: |
+      [Unit]
+      Description=Hybrid Commerce Backend API
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ app_user }}
+      WorkingDirectory=/opt/{{ app_name }}
+      Environment="PATH=/opt/{{ app_name }}/venv/bin"
+      ExecStart=/opt/{{ app_name }}/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port {{ app_port }}
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+
+- name: Reload systemd
   systemd:
-    name: hybrid-commerce
-    enabled: true
+    daemon_reload: yes
+
+- name: Enable and start service
+  systemd:
+    name: "{{ app_name }}"
+    enabled: yes
     state: started
-    daemon_reload: true

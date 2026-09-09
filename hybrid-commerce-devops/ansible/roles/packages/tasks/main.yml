@@ -1,0 +1,19 @@
+# Package installation
+- name: Install required packages
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - git
+      - curl
+      - wget
+      - ufw
+      - fail2ban
+    state: present
+    update_cache: yes
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    update_cache: yes

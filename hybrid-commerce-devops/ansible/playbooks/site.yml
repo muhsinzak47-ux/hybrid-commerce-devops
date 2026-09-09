@@ -1,62 +1,95 @@
 ---
+# Hybrid Commerce Ansible Playbook
+# Purpose: Configure Ubuntu 24.04 server for the application
+
 - name: Configure Hybrid Commerce Application Server
-  hosts: app_servers
+  hosts: all
   become: true
-  vars_files:
-    - ../group_vars/all.yml
+  vars:
+    app_name: "hybrid-commerce"
+    app_user: "appuser"
+    app_port: 8000
+    db_port: 5432
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
 
   roles:
-    - common
-    - docker
-    - app_deploy
+    - role: users
+    - role: packages
+    - role: docker
+    - role: firewall
+    - role: ssh_hardening
+    - role: app_deploy
 
   tasks:
-    - name: Ensure application directories exist
+    - name: Ensure application directory exists
       file:
-        path: "{{ item }}"
+        path: "/opt/{{ app_name }}"
         state: directory
         owner: "{{ app_user }}"
         mode: '0755'
-      loop:
-        - "/opt/{{ app_name }}"
-        - "/opt/{{ app_name }}/app"
 
     - name: Copy application files
-      copy:
+      synchronize:
         src: "../app/backend/"
-        dest: "/opt/{{ app_name }}/app/"
-        owner: "{{ app_user }}"
-        mode: '0644'
-      ignore_errors: true
+        dest: "/opt/{{ app_name }}/"
+        recursive: yes
+      ignore_errors: yes  # Use git clone in production
 
-    - name: Copy .env file
-      copy:
-        src: "../app/backend/.env"
-        dest: "/opt/{{ app_name }}/.env"
-        owner: "{{ app_user }}"
-        mode: '0600'
-      ignore_errors: true
+    - name: Create Python virtual environment
+      command: python3 -m venv /opt/{{ app_name }}/venv
+      args:
+        creates: /opt/{{ app_name }}/venv/bin/python
+      become_user: "{{ app_user }}"
 
     - name: Install Python dependencies
       pip:
-        requirements: "/opt/{{ app_name }}/app/requirements.txt"
+        requirements: "/opt/{{ app_name }}/requirements.txt"
         virtualenv: "/opt/{{ app_name }}/venv"
-        virtualenv_command: python3 -m venv
-      ignore_errors: true
+      become_user: "{{ app_user }}"
 
-    - name: Copy systemd service file
+    - name: Create systemd service
       copy:
-        src: "files/hybrid-commerce.service"
-        dest: "/etc/systemd/system/hybrid-commerce.service"
+        dest: "/etc/systemd/system/{{ app_name }}.service"
+        content: |
+          [Unit]
+          Description=Hybrid Commerce Backend API
+          After=network.target
+
+          [Service]
+          Type=simple
+          User={{ app_user }}
+          WorkingDirectory=/opt/{{ app_name }}
+          Environment="PATH=/opt/{{ app_name }}/venv/bin"
+          ExecStart=/opt/{{ app_name }}/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port {{ app_port }}
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
         mode: '0644'
 
     - name: Reload systemd
       systemd:
-        daemon_reload: true
+        daemon_reload: yes
 
-    - name: Enable and start application service
+    - name: Enable and start service
       systemd:
-        name: hybrid-commerce
-        enabled: true
+        name: "{{ app_name }}"
+        enabled: yes
         state: started
-        restarted: true
+
+    - name: Verify application is running
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 10
+      delay: 5
+      until: health_check.status == 200
+      ignore_errors: yes

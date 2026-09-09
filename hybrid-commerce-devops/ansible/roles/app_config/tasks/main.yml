@@ -1,0 +1,43 @@
+# Application configuration deployment
+- name: Create application directory
+  file:
+    path: "/opt/{{ app_name }}"
+    state: directory
+    owner: "{{ app_user }}"
+    mode: '0755'
+
+- name: Copy application source code
+  synchronize:
+    src: "../../app/backend/"
+    dest: "/opt/{{ app_name }}/"
+    delete: no
+    recursive: yes
+  ignore_errors: yes  # Development only - in production use git clone
+
+- name: Copy .env.example as template
+  copy:
+    src: "../../app/backend/.env.example"
+    dest: "/opt/{{ app_name }}/.env.example"
+    owner: "{{ app_user }}"
+    mode: '0644'
+
+- name: Create .env from template (dev only - use secrets management in production)
+  copy:
+    content: |
+      APP_NAME={{ app_name }}
+      ENVIRONMENT=production
+      DEBUG=false
+      SECRET_KEY={{ secret_key | default('change-me-in-production') }}
+      DATABASE_URL=postgresql+psycopg2://{{ postgres_user }}:{{ postgres_password }}@localhost:{{ db_port }}/{{ postgres_db }}
+      REDIS_URL=redis://localhost:6379
+    dest: "/opt/{{ app_name }}/.env"
+    owner: "{{ app_user }}"
+    mode: '0600'
+  no_log: true
+
+- name: Install Python dependencies
+  pip:
+    requirements: "/opt/{{ app_name }}/requirements.txt"
+    virtualenv: "/opt/{{ app_name }}/venv"
+    virtualenv_command: "python3 -m venv"
+  become_user: "{{ app_user }}"

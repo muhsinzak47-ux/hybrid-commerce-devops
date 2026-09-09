@@ -1,0 +1,40 @@
+# UFW Firewall configuration
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: Set default UFW policies
+  ufw:
+    direction: incoming
+    policy: deny
+  when: ansible_check_mode is not defined or not ansible_check_mode
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Allow HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Allow HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Allow application port
+  ufw:
+    rule: allow
+    port: "{{ app_port }}"
+    proto: tcp
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  when: ansible_check_mode is not defined or not ansible_check_mode

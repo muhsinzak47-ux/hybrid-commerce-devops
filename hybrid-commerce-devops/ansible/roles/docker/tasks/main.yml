@@ -1,5 +1,5 @@
----
-- name: Install Docker dependencies
+# Docker installation
+- name: Install Docker prerequisites
   apt:
     name:
       - ca-certificates
@@ -23,20 +23,19 @@
     name: docker-ce
     state: present
 
-- name: Install Docker Compose
-  get_url:
-    url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
-    dest: /usr/local/bin/docker-compose
-    mode: '0755'
+- name: Install Docker Compose plugin
+  apt:
+    name: docker-compose-plugin
+    state: present
 
 - name: Start and enable Docker
   systemd:
     name: docker
-    enabled: true
+    enabled: yes
     state: started
 
 - name: Add app user to docker group
   user:
     name: "{{ app_user }}"
     groups: docker
-    append: true
+    append: yes

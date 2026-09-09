@@ -1,0 +1,94 @@
+# ============================================================================
+# PROMETHEUS CONFIGURATION
+# ============================================================================
+# Purpose: Monitor Kubernetes cluster, application, and infrastructure
+# Integration: Scrapes metrics from node-exporter, kube-state-metrics, app
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: hybrid-commerce
+    environment: demo
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Rule files for alerts
+rule_files:
+  - 'alert_rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Kubernetes nodes (CPU, memory, disk)
+  - job_name: 'node-exporter'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - source_labels: [__address__]
+        regex: '(.*):10250'
+        target_label: __address__
+        replacement: '$1:9100'
+
+  # Kubernetes pod metrics
+  - job_name: 'kube-state-metrics'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: kube-state-metrics
+      - source_labels: [__meta_kubernetes_pod_ip]
+        target_label: __address__
+
+  # Application metrics (FastAPI with prometheus-fastapi-instrumentator)
+  - job_name: 'hybrid-commerce-backend'
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        action: keep
+        regex: backend
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: http
+    metrics_path: '/metrics'
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - source_labels: [__address__]
+        regex: '(.*):10250'
+        target_label: __address__
+        replacement: '$1:4194'
+
+# Recording rules for efficiency
+record_rules:
+  - record: job:http_inprogress_requests:rate5m
+    expr: rate(http_inprogress_requests[5m])
+
+  - record: job:http_requests_total:rate5m
+    expr: rate(http_requests_total[5m])
+
+  - record: job:http_request_duration_seconds_count:rate5m
+    expr: rate(http_request_duration_seconds_count[5m])
+
+  - record: job:http_request_duration_seconds_sum:rate5m
+    expr: rate(http_request_duration_seconds_sum[5m])
+
+  - record: job:http_request_latency_seconds:avg5m
+    expr: sum(rate(http_request_duration_seconds_sum[5m])) / sum(rate(http_request_duration_seconds_count[5m]))

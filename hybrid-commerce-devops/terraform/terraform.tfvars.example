@@ -1,0 +1,17 @@
+# Terraform Variables
+# Copy this file to terraform.tfvars and customize values
+# NEVER commit terraform.tfvars to Git
+
+aws_region     = "ap-south-1"
+environment   = "dev"
+vpc_cidr       = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+private_subnet_cidr = "10.0.10.0/24"
+instance_type = "t2.micro"
+instance_ami  = "ami-0a55e8722d2ca0fe3"  # Ubuntu 24.04 LTS (ap-south-1)
+ssh_key_name  = "zakkey"
+app_port      = 8000
+db_port       = 5432
+
+# Contact email for notifications (optional)
+# contact_email = "your-email@example.com"

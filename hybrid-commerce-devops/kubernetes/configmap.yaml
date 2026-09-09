@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hybrid-commerce-config
+  namespace: hybrid-commerce
+data:
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  APP_NAME: "hybrid-commerce"
+  LOG_LEVEL: "info"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hybrid-commerce-app
+  namespace: hybrid-commerce
+data:
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "hybridcommerce"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"

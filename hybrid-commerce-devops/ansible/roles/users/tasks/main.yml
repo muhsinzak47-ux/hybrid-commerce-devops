@@ -1,0 +1,13 @@
+# Users and groups
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    create_home: yes
+    shell: /bin/bash
+    state: present
+
+- name: Add user to docker group
+  user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: yes

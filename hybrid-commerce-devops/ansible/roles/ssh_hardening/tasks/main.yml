@@ -1,0 +1,23 @@
+# SSH hardening
+- name: Disable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    line: "PermitRootLogin no"
+
+- name: Disable password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PasswordAuthentication"
+    line: "PasswordAuthentication no"
+
+- name: Enable public key auth
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PubkeyAuthentication"
+    line: "PubkeyAuthentication yes"
+
+- name: Restart SSH
+  service:
+    name: ssh
+    state: restarted
